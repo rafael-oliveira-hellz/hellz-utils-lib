@@ -1,5 +1,5 @@
 {
-  "name": "hellz-utils-lib",
+  "name": "@infocal_technologies/hellz-utils-lib",
   "version": "1.0.0",
   "description": "A utility library for various tasks",
   "main": "dist/index.js",
@@ -10,9 +10,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/seu-usuario/hellz-utils-lib.git"
+    "url": "https://github.com/rafael-oliveira-hellz/hellz-utils-lib"
   },
-  "author": "Seu Nome",
+  "author": "Rafael de Oliveira Silva",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.7.2"
