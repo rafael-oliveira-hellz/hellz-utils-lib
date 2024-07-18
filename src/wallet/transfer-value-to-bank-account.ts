@@ -1,5 +1,5 @@
 import axios from "axios";
-import { convertUSDTToBRL } from "../currency";
+import { convertDOGEToUSDT, convertUSDTToBRL } from "../currency";
 
 interface Recipient {
   name: string;
@@ -9,20 +9,21 @@ interface Recipient {
 /**
  * Transfers BRL to a bank account using the Pagar.me API and PIX key.
  *
- * @param {number} amount - The amount to transfer in USDT.
+ * @param {number} amount - The amount to transfer in DOGECOIN.
  * @param {string} pixKey - The PIX key of the recipient.
  * @return {Promise<void>}
  */
-export async function transferValueToBankAccount(
+export async function transferValueInPIX(
   amount: number,
   pixKey: string,
   recipient: Recipient
 ): Promise<void> {
-  const amountInBRL = await convertUSDTToBRL(amount);
+  const amountInUSDT = await convertDOGEToUSDT(amount);
+  const amountInBRL = await convertUSDTToBRL(amountInUSDT);
 
   const pagarMeApiKey = "your_pagarme_api_key";
   const data = {
-    amount: Math.round(amountInBRL * 100),
+    amount: Math.floor(amountInBRL * 100),
     payment_method: "pix",
     pix: {
       pix_key: pixKey,
