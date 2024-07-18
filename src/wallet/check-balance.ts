@@ -1,13 +1,6 @@
 import axios from "axios";
-import GlobalValues from "../utils/global-values";
 
 const blockCypherApiKey = "your_blockcypher_api_key";
-const globalValues = GlobalValues.getInstance();
-const walletAddress = globalValues.getPrimaryWalletAddress();
-
-if (!walletAddress) {
-  throw new Error("Primary wallet address not set");
-}
 
 /**
  * Retrieves the balance for a given address from the BlockCypher API.
@@ -34,6 +27,6 @@ async function checkBalance(address: string): Promise<number> {
  * @return {Promise<number>} The balance of the primary wallet address in satoshis.
  * @throws {Error} If the primary wallet address is not set.
  */
-export async function checkWalletBalance(): Promise<number> {
-  return await checkBalance(walletAddress!);
+export async function checkWalletBalance(address: string): Promise<number> {
+  return await checkBalance(address);
 }

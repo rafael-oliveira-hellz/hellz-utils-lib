@@ -23,7 +23,7 @@ interface UTXO {
  * @param {string} address - The Dogecoin address.
  * @return {Promise<UTXO[]>} The list of UTXOs.
  */
-async function getUtxos(address: string): Promise<UTXO[]> {
+export async function getUtxos(address: string): Promise<UTXO[]> {
   const url = `https://api.blockcypher.com/v1/doge/main/addrs/${address}?unspentOnly=true&token=${blockCypherApiKey}`;
   const response = await axios.get(url);
   return response.data.txrefs;
@@ -59,31 +59,51 @@ function addInputsToPsbt(
 }
 
 /**
- * Creates a new PSBT and adds inputs.
+ * Creates a new PSBT, adds inputs and outputs, and signs the transaction.
  *
  * @param {UTXO[]} utxos - The list of UTXOs.
  * @param {number} amountInDoge - The amount to transfer in Dogecoin.
- * @param {bitcoin.Signer} keyPair - The key pair to sign inputs.
- * @return {bitcoin.Psbt} The partially signed Bitcoin transaction.
+ * @param {string} toAddress - The recipient's address.
+ * @param {string} privateKeyWIF - The private key in WIF format for signing.
+ * @return {bitcoin.Psbt} The signed PSBT.
  */
-function createPsbtWithInputs(
+export function createAndSignPsbt(
   utxos: UTXO[],
   amountInDoge: number,
-  keyPair: bitcoin.Signer
+  toAddress: string,
+  privateKeyWIF: string
 ): bitcoin.Psbt {
   const psbt = new bitcoin.Psbt({ network: dogecoin });
-  addInputsToPsbt(psbt, utxos, amountInDoge);
+  const inputAmount = addInputsToPsbt(psbt, utxos, amountInDoge);
+
+  psbt.addOutput({
+    address: toAddress,
+    value: amountInDoge,
+  });
+
+  const change = inputAmount - amountInDoge;
+  if (change > 0) {
+    const fromAddress = globalValues.getPrimaryWalletAddress();
+    psbt.addOutput({
+      address: fromAddress!,
+      value: change,
+    });
+  }
+
+  const keyPair = ECPair.fromWIF(privateKeyWIF, dogecoin);
+  psbt.signAllInputs(keyPair);
+  psbt.finalizeAllInputs();
+
   return psbt;
 }
 
 /**
  * Finalizes and extracts the transaction from the PSBT.
  *
- * @param {bitcoin.Psbt} psbt - The partially signed Bitcoin transaction.
+ * @param {bitcoin.Psbt} psbt - The signed PSBT.
  * @return {string} The transaction hex.
  */
-function finalizeAndExtractTx(psbt: bitcoin.Psbt): string {
-  psbt.finalizeAllInputs();
+export function finalizeAndExtractTx(psbt: bitcoin.Psbt): string {
   const tx = psbt.extractTransaction();
   return tx.toHex();
 }
@@ -94,7 +114,7 @@ function finalizeAndExtractTx(psbt: bitcoin.Psbt): string {
  * @param {string} txHex - The transaction hex.
  * @return {Promise<string>} The transaction ID.
  */
-async function broadcastTransaction(txHex: string): Promise<string> {
+export async function broadcastTransaction(txHex: string): Promise<string> {
   const url = `https://api.blockcypher.com/v1/doge/main/txs/push?token=${blockCypherApiKey}`;
   const response = await axios.post(url, { tx: txHex });
   return response.data.tx.hash;
@@ -121,15 +141,9 @@ export async function transferValue(
   }
 
   const utxos = await getUtxos(fromAddress);
-  const keyPair = ECPair.fromWIF(privateKeyWIF, dogecoin);
 
-  const psbt = createPsbtWithInputs(utxos, amountInDoge, keyPair);
-  psbt.addOutput({
-    address: toAddress,
-    value: amountInDoge,
-  });
-  psbt.signAllInputs(keyPair);
-
+  const psbt = createAndSignPsbt(utxos, amountInDoge, toAddress, privateKeyWIF);
   const txHex = finalizeAndExtractTx(psbt);
+
   return await broadcastTransaction(txHex);
 }
