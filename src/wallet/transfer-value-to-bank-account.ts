@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { convertDOGEToUSDT, convertUSDTToBRL } from "../currency";
 
 interface Recipient {
@@ -17,7 +17,7 @@ export async function transferValueInPIX(
   amount: number,
   pixKey: string,
   recipient: Recipient
-): Promise<void> {
+): Promise<AxiosResponse> {
   const amountInUSDT = await convertDOGEToUSDT(amount);
   const amountInBRL = await convertUSDTToBRL(amountInUSDT);
 
@@ -43,7 +43,10 @@ export async function transferValueInPIX(
         },
       }
     );
+
     console.log("Transaction successful:", response.data);
+
+    return response.data;
   } catch (error) {
     console.error("Error making PIX transaction:", error);
     throw new Error("PIX transaction failed");
