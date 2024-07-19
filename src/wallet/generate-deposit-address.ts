@@ -8,13 +8,6 @@ import { dogecoin } from "../networks";
 const bip32 = BIP32Factory(ecc);
 
 const globalValues = GlobalValues.getInstance();
-const masterPrivateKey = globalValues.getMasterPrivateKey();
-
-if (!masterPrivateKey) {
-  throw new Error("Master private key not set");
-}
-
-const node = bip32.fromBase58(masterPrivateKey);
 
 /**
  * Converts a UUID to a deterministic integer using SHA-256.
@@ -34,6 +27,14 @@ function uuidToInteger(uuid: string): number {
  * @return {string} The generated deposit address.
  */
 export function generateDepositAddress(userId: string): string {
+  const masterPrivateKey = globalValues.getMasterPrivateKey();
+
+  if (!masterPrivateKey) {
+    throw new Error("Master private key not set");
+  }
+
+  const node = bip32.fromBase58(masterPrivateKey);
+
   const userIndex = uuidToInteger(userId);
   const childNode = node.derivePath(`m/44'/3'/0'/0/${userIndex}`);
   const { address } = bitcoin.payments.p2pkh({

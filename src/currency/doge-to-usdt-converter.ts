@@ -1,9 +1,7 @@
 import axios from "axios";
 
 interface CoinGeckoDogecoinResponse {
-  dogecoin: {
-    usdt: number;
-  };
+  price: string;
 }
 
 /**
@@ -16,9 +14,9 @@ interface CoinGeckoDogecoinResponse {
 export async function convertDOGEToUSDT(amount: number): Promise<number> {
   try {
     const response = await axios.get<CoinGeckoDogecoinResponse>(
-      "https://api.coingecko.com/api/v3/simple/price?ids=dogecoin&vs_currencies=usdt"
+      "https://api.binance.com/api/v3/ticker/price?symbol=DOGEUSDT"
     );
-    const exchangeRate = response.data.dogecoin.usdt;
+    const exchangeRate = parseFloat(response.data.price);
     return amount * exchangeRate;
   } catch (error) {
     console.error("Error fetching DOGE to USDT rate:", error);

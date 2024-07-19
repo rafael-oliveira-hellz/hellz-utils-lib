@@ -1,6 +1,6 @@
 {
   "name": "hellz-utils-lib",
-  "version": "1.1.3",
+  "version": "1.2.6",
   "description": "A utility library for various tasks",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,12 +25,14 @@
     "crypto": "^1.0.1",
     "ecpair": "^2.1.0",
     "ethers": "^6.13.1",
+    "qrcode": "^1.5.3",
     "tiny-secp256k1": "^2.2.3"
   },
   "devDependencies": {
     "@types/bip32": "^2.0.0",
     "@types/bip39": "^3.0.0",
     "@types/node": "^20.14.11",
+    "@types/qrcode": "^1.5.5",
     "typescript": "^4.3.5"
   }
 }

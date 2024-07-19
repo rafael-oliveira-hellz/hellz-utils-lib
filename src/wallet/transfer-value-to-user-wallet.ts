@@ -66,9 +66,10 @@ export async function transferUSDT(
   amount: number,
   toAddress: string
 ): Promise<string> {
-  const provider = new InfuraProvider("mainnet", "your_infura_project_id");
+  const infura_project_id = process.env.INFURA_PROJECT_ID as string;
+  const provider = new InfuraProvider("mainnet", infura_project_id);
 
-  const privateKey = "your_ethereum_wallet_private_key";
+  const privateKey = process.env.ETHERIUM_WALLET_PRIVATE_KEY as string;
 
   const wallet = new ethers.Wallet(privateKey, provider);
 

@@ -8,7 +8,7 @@ import { dogecoin } from "../networks";
 
 const ECPair = ECPairFactory(ecc);
 const globalValues = GlobalValues.getInstance();
-const blockCypherApiKey = "your_blockcypher_api_key";
+const blockCypherApiKey = process.env.BLOCKCYPHER_API_KEY as string;
 
 interface UTXO {
   tx_hash: string;

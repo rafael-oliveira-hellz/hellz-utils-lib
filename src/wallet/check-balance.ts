@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const blockCypherApiKey = "your_blockcypher_api_key";
+const blockCypherApiKey = process.env.BLOCKCYPHER_API_KEY as string;
 
 /**
  * Retrieves the balance for a given address from the BlockCypher API.
