@@ -1,15 +1,13 @@
 import { convertDOGEToUSDT } from "../currency";
-import GlobalValues from "../utils/global-values";
+import { validateWalletBalance } from "../utils/validate-balance";
 import { checkWalletBalance } from "./check-balance";
 import {
   broadcastTransaction,
   createAndSignPsbt,
   finalizeAndExtractTx,
   getUtxos,
-} from "./transfer-value";
+} from "./transfer-value-to-user-dogecoin-wallet";
 import { ethers, InfuraProvider, parseUnits } from "ethers";
-
-const globalValues = GlobalValues.getInstance();
 
 const usdtContractAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
@@ -21,25 +19,39 @@ const erc20Abi = [
  * Converts Dogecoin to USDT and transfers the USDT to the specified address.
  *
  * @param {string} toAddress - The recipient's address for the USDT.
+ * @param {string} sourceAddress - The user's wallet address from which the funds will be retrieved.
+ * @param {string} privateKeyWIF - The private key in WIF format for signing.
+ * @param {string} primaryWalletAddress - The primary wallet address from which the taxes will be sent.
  * @return {Promise<string>} The transaction ID.
  */
 export async function transferDogecoinToUSDT(
-  toAddress: string
+  toAddress: string,
+  sourceAddress: string,
+  privateKeyWIF: string,
+  primaryWalletAddress: string
 ): Promise<{ dogeTxId: string; usdtTxId: string }> {
-  const fromAddress = globalValues.getPrimaryWalletAddress();
-  const privateKeyWIF = globalValues.getPrivateKeyWIF();
-
-  if (!fromAddress || !privateKeyWIF) {
+  if (!privateKeyWIF) {
     throw new Error("Primary wallet data not set");
   }
 
-  const dogeBalance = await checkWalletBalance(fromAddress);
+  const dogeBalance = await checkWalletBalance(sourceAddress);
 
   const amountInUsdt = await convertDOGEToUSDT(dogeBalance);
 
-  const utxos = await getUtxos(fromAddress);
+  validateWalletBalance(dogeBalance, amountInUsdt);
 
-  const psbt = createAndSignPsbt(utxos, dogeBalance, toAddress, privateKeyWIF);
+  console.log("Sufficient balance, proceeding with the transaction...");
+
+  const utxos = await getUtxos(sourceAddress);
+
+  const psbt = createAndSignPsbt(
+    utxos,
+    dogeBalance,
+    toAddress,
+    privateKeyWIF,
+    sourceAddress,
+    primaryWalletAddress
+  );
   const txHex = finalizeAndExtractTx(psbt);
   const dogeTxId = await broadcastTransaction(txHex);
 

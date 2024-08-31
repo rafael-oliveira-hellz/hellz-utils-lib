@@ -2,12 +2,11 @@ import axios from "axios";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import ECPairFactory from "ecpair";
-import GlobalValues from "../utils/global-values";
-import { convertUSDTToDOGE } from "../currency";
 import { dogecoin } from "../networks";
+import { checkWalletBalance } from "./check-balance";
+import { validateWalletBalance } from "../utils/validate-balance";
 
 const ECPair = ECPairFactory(ecc);
-const globalValues = GlobalValues.getInstance();
 const blockCypherApiKey = process.env.BLOCKCYPHER_API_KEY as string;
 
 interface UTXO {
@@ -65,27 +64,42 @@ function addInputsToPsbt(
  * @param {number} amountInDoge - The amount to transfer in Dogecoin.
  * @param {string} toAddress - The recipient's address.
  * @param {string} privateKeyWIF - The private key in WIF format for signing.
+ * @param {string} sourceAddress - The user's wallet address from which the funds will be retrieved.
+ * @param {string} primaryWalletAddress - The primary wallet address from which the taxes will be sent.
  * @return {bitcoin.Psbt} The signed PSBT.
  */
 export function createAndSignPsbt(
   utxos: UTXO[],
   amountInDoge: number,
   toAddress: string,
-  privateKeyWIF: string
+  privateKeyWIF: string,
+  sourceAddress: string,
+  primaryWalletAddress: string
 ): bitcoin.Psbt {
   const psbt = new bitcoin.Psbt({ network: dogecoin });
   const inputAmount = addInputsToPsbt(psbt, utxos, amountInDoge);
 
+  // Calcular as quantias a serem transferidas
+  const primaryAmount = Math.floor(amountInDoge * 0.1); // 10% do valor
+  const userAmount = amountInDoge - primaryAmount; // 90% do valor
+
+  // Adicionar saída para a carteira principal
+  psbt.addOutput({
+    address: primaryWalletAddress,
+    value: primaryAmount,
+  });
+
+  // Adicionar saída para a carteira do usuário
   psbt.addOutput({
     address: toAddress,
-    value: amountInDoge,
+    value: userAmount,
   });
 
   const change = inputAmount - amountInDoge;
+
   if (change > 0) {
-    const fromAddress = globalValues.getPrimaryWalletAddress();
     psbt.addOutput({
-      address: fromAddress!,
+      address: sourceAddress, // carteira do usuário dentro do NFT
       value: change,
     });
   }
@@ -123,26 +137,42 @@ export async function broadcastTransaction(txHex: string): Promise<string> {
 /**
  * Transfers Dogecoin to the specified address.
  *
- * @param {number} amount - The amount to transfer in USDT.
+ * @param {number} amount - The amount to transfer in DOGE.
+ * @param {string} sourceAddress - The source address to transfer from.
  * @param {string} toAddress - The recipient's Dogecoin address.
+ * @param {string} privateKeyWIF - The private key in WIF format for signing.
+ * @param {string} sourceAddress - The user's wallet address from which the funds will be retrieved.
+ * @param {string} primaryWalletAddress - The primary wallet address from which the taxes will be sent.
  * @return {Promise<string>} The transaction ID.
  */
-export async function transferValue(
+export async function transferValueToUser(
   amount: number,
-  toAddress: string
+  sourceAddress: string,
+  toAddress: string,
+  privateKeyWIF: string,
+  primaryWalletAddress: string
 ): Promise<string> {
-  const amountInDoge = await convertUSDTToDOGE(amount);
+  const balance = await checkWalletBalance(sourceAddress);
 
-  const fromAddress = globalValues.getPrimaryWalletAddress();
-  const privateKeyWIF = globalValues.getPrivateKeyWIF();
+  validateWalletBalance(balance, amount);
 
-  if (!fromAddress || !privateKeyWIF) {
+  console.log("Sufficient balance, proceeding with the transaction...");
+
+  if (!privateKeyWIF) {
     throw new Error("Primary wallet data not set");
   }
 
-  const utxos = await getUtxos(fromAddress);
+  const utxos = await getUtxos(sourceAddress);
 
-  const psbt = createAndSignPsbt(utxos, amountInDoge, toAddress, privateKeyWIF);
+  const psbt = createAndSignPsbt(
+    utxos,
+    amount,
+    toAddress,
+    privateKeyWIF,
+    sourceAddress,
+    primaryWalletAddress
+  );
+
   const txHex = finalizeAndExtractTx(psbt);
 
   return await broadcastTransaction(txHex);

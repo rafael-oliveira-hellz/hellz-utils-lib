@@ -22,6 +22,7 @@ export async function transferValueInPIX(
   const amountInBRL = await convertUSDTToBRL(amountInUSDT);
 
   const pagarMeApiKey = process.env.PAGARME_API_KEY as string;
+
   const data = {
     amount: Math.floor(amountInBRL * 100),
     payment_method: "pix",

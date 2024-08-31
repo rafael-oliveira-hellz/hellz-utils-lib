@@ -2,12 +2,9 @@ import * as crypto from "crypto";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { BIP32Factory } from "bip32";
-import GlobalValues from "../utils/global-values";
 import { dogecoin } from "../networks";
 
 const bip32 = BIP32Factory(ecc);
-
-const globalValues = GlobalValues.getInstance();
 
 /**
  * Converts a UUID to a deterministic integer using SHA-256.
@@ -26,14 +23,19 @@ function uuidToInteger(uuid: string): number {
  * @param {string} userId - The UUID of the user.
  * @return {string} The generated deposit address.
  */
-export function generateDepositAddress(userId: string): string {
-  const masterPrivateKey = globalValues.getMasterPrivateKey();
-
+export function generateDepositAddress(
+  userId: string,
+  masterPrivateKey: string
+): string {
   if (!masterPrivateKey) {
     throw new Error("Master private key not set");
   }
 
-  const node = bip32.fromBase58(masterPrivateKey);
+  const node = bip32.fromBase58(masterPrivateKey, dogecoin);
+
+  if (node.network.wif !== dogecoin.wif) {
+    throw new Error("Invalid network version");
+  }
 
   const userIndex = uuidToInteger(userId);
   const childNode = node.derivePath(`m/44'/3'/0'/0/${userIndex}`);
